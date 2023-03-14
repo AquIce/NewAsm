@@ -12,10 +12,11 @@ class NewAsm:
         "and",
         "or",
         "xor",
+        "mux",
     )
     __COMMAND_CALLS = []
-    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3)
-    __EVALUABLE =  7 * (False,) + 5 * (True,)
+    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4)
+    __EVALUABLE =  7 * (False,) + 6 * (True,)
     __STD_OUTS = ("cout", "rout")
     __SYS_MEM = tuple([f"0x00000{i}" for i in "0123456789abcdef"])
     __MEMORY_REGS = {
@@ -40,6 +41,7 @@ class NewAsm:
             self._and,
             self._or,
             self._xor,
+            self._mux,
         ]
 
     def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -210,8 +212,6 @@ class NewAsm:
         self._not(["not", arg2[0], "0x000002"], True)
         self._nnd(["nnd", "0x000001", "0x000002", args[3]], True)
 
-    # ADVANCED OPERATORS
-
     def _xor(self, args, admin=False):
         arg1 = self.get_abs_arg_val(args[1], "xor", 1)
         arg2 = self.get_abs_arg_val(args[2], "xor", 2)
@@ -225,10 +225,33 @@ class NewAsm:
         self._nnd(["nnd", arg1[0], arg2[0], "0x000002"], True)
         self._and(["and", "0x000001", "0x000002", args[3]], True)
 
+    # ADVANCED OPERATORS
+
+    def _mux(self, args, admin=False):
+        a = self.get_abs_arg_val(args[1], "mux", 1)
+        i1 = self.get_abs_arg_val(args[2], "mux", 2)
+        i0 = self.get_abs_arg_val(args[3], "mux", 3)
+        if a[0] == -1:
+            return a[1]
+        if i0[0] == -1:
+            return i0[1]
+        if i1[0] == -1:
+            return i1[1]
+        a = a[0]
+        i0 = i0[0]
+        i1 = i1[0]
+        if not self.check_mem_addr(args[4], admin):
+            return self.error("mux", "Invalid destination registry address", 4)
+        self._nnd(["nnd", i0, a, "0x000001"], True)
+        self._nnd(["nnd", a, a, "0x000002"], True)
+        self._nnd(["nnd", i1, "0x000002", "0x000003"], True)
+        self._nnd(["nnd", "0x000001", "0x000003", args[4]], True)
+
+
     def compile(self, code: str = "") -> str:
         code = self.code if code == "" else code
         for i in self.code:
-            if i.startswith(":"):
+            if i == "" or i.startswith(":"):
                 continue
             args = i.split(" ")
             if not args[0] in self.__COMMANDS:
