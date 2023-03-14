@@ -1,4 +1,7 @@
-reg 0x000010 eva xor 0 0
+reg 0x000010 xor 0 0
+reg 0x000011 1
+reg 0x000012 0x000011
+grg
 eva xor 0 1
 eva xor 1 0
 eva xor 1 1

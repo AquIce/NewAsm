@@ -52,6 +52,16 @@ class NewAsm:
                 return False
         return True
 
+    def eva_cast(self, argval:list) -> tuple:
+        if argval[0] not in self.__COMMANDS:
+            return -1, self.error("eva::implicit", "Invalid command to evaluate", 1)
+        if not self.__EVALUABLE[self.__COMMANDS.index(argval[0])]:
+            return -1, self.error("eva::implicit", "Command is not evaluatable", 1)
+        tmp = self.__COMMAND_CALLS[self.__COMMANDS.index(argval[0])](argval + ['0x000000'], True), ''
+        if tmp != (None, ''):
+            return -1, tmp[0]
+        return self.reg['0x000000'], ''
+
     def check_val(self, val: int) -> bool:
         return str(val) in "01"
 
@@ -66,7 +76,7 @@ class NewAsm:
             self.code = [i.replace("\n", "") for i in f.readlines()]
 
     def error(self, command, message, argnb):
-        return f"[NewAsm:{command}] {message} (arg[{argnb}])"
+        return f"[NewAsm:({command}):error] {message} (arg[{argnb}])"
 
     def get_abs_arg_val(self, arg, command, argnb) -> tuple:
         if not arg in self.reg.keys():
@@ -83,8 +93,19 @@ class NewAsm:
             return self.error("reg", "Invalid registry address", 1)
         if args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
             return self.error("reg", "Value already in registry", 1)
-        if not self.check_val(args[2]):
+        print(len(args) - 1, self.__ARGS_NB[self.__COMMANDS.index("reg")])
+        if len(args) - 1 == self.__ARGS_NB[self.__COMMANDS.index("reg")]:
+            arg2 = self.get_abs_arg_val(args[2], "reg", 2)
+            if arg2[0] == -1:
+                return arg2[1]
+            args[2] = arg2[0]
+        elif (not self.check_val(args[2]) and len(args) == self.__ARGS_NB[self.__COMMANDS.index("reg")]):
             return self.error("reg", "Invalid registry value", 2)
+        elif len(args) > self.__ARGS_NB[self.__COMMANDS.index("reg")]:
+            tmp = self.eva_cast(args[2:])
+            if tmp[0] == -1:
+                return tmp[1]
+            args[2] = tmp[0]
         self.reg[args[1]] = int(args[2])
 
     def _upt(self, args, admin=False):
@@ -92,8 +113,18 @@ class NewAsm:
             return self.error("upt", "Invalid registry address", 1)
         if not args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
             return self.error("upt", "Value does not exist in registry", 1)
-        if not self.check_val(args[2]):
+        if len(args) - 1 == self.__ARGS_NB[self.__COMMANDS.index("upt")]:
+            arg2 = self.get_abs_arg_val(args[2], "upt", 2)
+            if arg2[0] == -1:
+                return arg2[1]
+            args[2] = arg2[0]
+        elif (not self.check_val(args[2]) and len(args) == self.__ARGS_NB[self.__COMMANDS.index("upt")]):
             return self.error("upt", "Invalid registry value", 2)
+        elif len(args) > self.__ARGS_NB[self.__COMMANDS.index("upt")]:
+            tmp = self.eva_cast(args[2:])
+            if tmp[0] == -1:
+                return tmp[1]
+            args[2] = tmp[0]
         self.reg[args[1]] = int(args[2])
 
     def _mov(self, args, admin=False):
@@ -124,9 +155,7 @@ class NewAsm:
             return self.error("eva", "Invalid command to evaluate", 1)
         argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
         if argnb != len(args) - 1:
-            return self.error(
-                "eva", f"Invalid number of args for command \`{cmd}\`", "2..."
-            )
+            return self.error("eva", f"Invalid number of args for command \`{cmd}\`", 2)
         self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ["0x000000"], True)
         tmp = self.reg["0x000000"]
         del self.reg["0x000000"]
