@@ -1,6 +1,6 @@
 class NewAsm:
     __COMMANDS = (
-        "grg",
+        "get",
         "reg",
         "upt",
         "mov",
@@ -28,7 +28,7 @@ class NewAsm:
         self.code = ""
         self.out = std_out if std_out in self.__STD_OUTS else self.__STD_OUTS[0]
         self.__COMMAND_CALLS = [
-            self._grg,
+            self._get,
             self._reg,
             self._upt,
             self._mov,
@@ -85,15 +85,14 @@ class NewAsm:
             return int(arg), ""
         return self.reg[arg], ""
 
-    def _grg(self, args, admin=False):
-        return self.reg
+    def _get(self, args, admin=False):
+        return {i: self.reg[i] for i in self.reg.keys() if self.get_memory_reg(i) == "USR_MEM"}
 
     def _reg(self, args, admin=False):
         if not self.check_mem_addr(args[1]):
             return self.error("reg", "Invalid registry address", 1)
         if args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
             return self.error("reg", "Value already in registry", 1)
-        print(len(args) - 1, self.__ARGS_NB[self.__COMMANDS.index("reg")])
         if len(args) - 1 == self.__ARGS_NB[self.__COMMANDS.index("reg")]:
             arg2 = self.get_abs_arg_val(args[2], "reg", 2)
             if arg2[0] == -1:
@@ -229,6 +228,8 @@ class NewAsm:
     def compile(self, code: str = "") -> str:
         code = self.code if code == "" else code
         for i in self.code:
+            if i.startswith(":"):
+                continue
             args = i.split(" ")
             if not args[0] in self.__COMMANDS:
                 return self.error(args[0], "Invalid command", 0)
