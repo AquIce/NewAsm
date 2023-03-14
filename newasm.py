@@ -11,12 +11,17 @@ class NewAsm:
         "not",
         "and",
         "or",
+        "xor",
     )
     __COMMAND_CALLS = []
-    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3)
-    __EVALUABLE = (False, False, False, False, False, False, False, True, True, True, True)
+    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3)
+    __EVALUABLE =  7 * (False,) + 5 * (True,)
     __STD_OUTS = ("cout", "rout")
     __SYS_MEM = tuple([f"0x00000{i}" for i in "0123456789abcdef"])
+    __MEMORY_REGS = {
+        "SYS_OUT": ["0x000000"],
+        "SYS_MEM": [f"0x00000{i}" for i in "123456789abcdef"],
+    }
 
     def __init__(self, std_out=""):
         self.reg = {}
@@ -34,10 +39,11 @@ class NewAsm:
             self._not,
             self._and,
             self._or,
+            self._xor,
         ]
 
     def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
-        if not admin and mem_addr in self.__SYS_MEM:
+        if (not admin) and (mem_addr in self.__SYS_MEM):
             return False
         if mem_addr[0:2] != "0x" or len(mem_addr) != 8:
             return False
@@ -48,6 +54,12 @@ class NewAsm:
 
     def check_val(self, val: int) -> bool:
         return str(val) in "01"
+
+    def get_memory_reg(self, mem_addr: str) -> str:
+        for i in self.__MEMORY_REGS.keys():
+            if mem_addr in self.__MEMORY_REGS[i]:
+                return i
+        return "USR_MEM"
 
     def read_file(self, file: str):
         with open(file, "r") as f:
@@ -78,7 +90,7 @@ class NewAsm:
     def _upt(self, args, admin=False):
         if not self.check_mem_addr(args[1]):
             return self.error("upt", "Invalid registry address", 1)
-        if not args[1] in self.reg.keys() and args[1] != "0x000000":
+        if not args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
             return self.error("upt", "Value does not exist in registry", 1)
         if not self.check_val(args[2]):
             return self.error("upt", "Invalid registry value", 2)
@@ -122,6 +134,8 @@ class NewAsm:
 
     # BOOLEAN OPERATORS
 
+    # NAND
+
     def _nnd(self, args, admin=False):
         arg1 = self.get_abs_arg_val(args[1], "nnd", 1)
         arg2 = self.get_abs_arg_val(args[2], "nnd", 2)
@@ -133,13 +147,14 @@ class NewAsm:
             return self.error("nnd", "Invalid destination registry address", 3)
         self.reg[args[3]] = 1 if arg1[0] + arg2[0] != 2 else 0
 
+    # BASE OPERATORS
+
     def _not(self, args, admin=False):
         arg = self.get_abs_arg_val(args[1], "not", 1)
         if arg[0] == -1:
             return arg[1]
         if not self.check_mem_addr(args[2], admin):
             return self.error("not", "Invalid destination registry address", 2)
-        # NAND USE
         self._nnd(["nnd", arg[0], arg[0], args[2]], admin)
 
     def _and(self, args, admin=False):
@@ -151,10 +166,8 @@ class NewAsm:
             return arg2[1]
         if not self.check_mem_addr(args[3], admin):
             return self.error("and", "Invalid destination registry address", 3)
-        # NAND USE
-        self._nnd(["nnd", arg1[0], arg2[0], "0x000000"], True)
-        # NOT USE
-        self._not(["not", "0x000000", args[3]], True)
+        self._nnd(["nnd", arg1[0], arg2[0], "0x000001"], True)
+        self._not(["not", "0x000001", args[3]], True)
 
     def _or(self, args, admin=False):
         arg1 = self.get_abs_arg_val(args[1], "or", 1)
@@ -165,11 +178,24 @@ class NewAsm:
             return arg2[1]
         if not self.check_mem_addr(args[3], admin):
             return self.error("or", "Invalid destination registry address", 3)
-        # NOT USE
-        self._not(["not", arg1[0], "0x000000"], True)
-        self._not(["not", arg2[0], "0x000001"], True)
-        # NAND USE
-        self._nnd(["nnd", "0x000000", "0x000001", args[3]], True)
+        self._not(["not", arg1[0], "0x000001"], True)
+        self._not(["not", arg2[0], "0x000002"], True)
+        self._nnd(["nnd", "0x000001", "0x000002", args[3]], True)
+
+    # ADVANCED OPERATORS
+
+    def _xor(self, args, admin=False):
+        arg1 = self.get_abs_arg_val(args[1], "xor", 1)
+        arg2 = self.get_abs_arg_val(args[2], "xor", 2)
+        if arg1[0] == -1:
+            return arg1[1]
+        if arg2[0] == -1:
+            return arg2[1]
+        if not self.check_mem_addr(args[3], admin):
+            return self.error("or", "Invalid destination registry address", 3)
+        self._or(["or", arg1[0], arg2[0], "0x000001"], True)
+        self._nnd(["nnd", arg1[0], arg2[0], "0x000002"], True)
+        self._and(["and", "0x000001", "0x000002", args[3]], True)
 
     def compile(self, code: str = "") -> str:
         code = self.code if code == "" else code

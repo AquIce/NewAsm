@@ -1,4 +1,4 @@
-eva nnd 1 0
-eva not 0
-eva and 0 0
-eva or 1 1
+reg 0x000010 eva xor 0 0
+eva xor 0 1
+eva xor 1 0
+eva xor 1 1
