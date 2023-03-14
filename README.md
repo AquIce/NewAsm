@@ -422,10 +422,6 @@ Output :
 `OR(A, B)` is the same as `NAND(NOT(A), NOT(B))`.
 See [NAND](####nnd) and [NOT](####not) and for more informations.
 
-### Advanced Operations
-
-The advanced operations are used to **perform an operation between two (or more) values**.
-
 #### xor
 
 The `xor` operation is used to **perform a XOR operation** between two values.
@@ -475,6 +471,142 @@ Output :
 
 `XOR(A, B)` is the same as `AND(OR(A, B), NAND(A, B))`.
 See [NAND](####nnd), [AND](####and) and [OR](####or) for more informations.
+
+### Advanced Operations
+
+The advanced operations are used to **perform an operation between two (or more) values**.
+
+#### mux
+
+The `mux` operation is used to **perform a MUX operation** between two values.
+
+##### Truthtable
+
+| S | A | B | MUX S A B |
+|---|---|---|-----------|
+| 0 | 0 | 0 | 0         |
+| 0 | 0 | 1 | 0         |
+| 0 | 1 | 0 | 1         |
+| 0 | 1 | 1 | 1         |
+| 1 | 0 | 0 | 0         |
+| 1 | 0 | 1 | 1         |
+| 1 | 1 | 0 | 0         |
+| 1 | 1 | 1 | 1         |
+
+##### Syntax
+
+The syntax is `mux <salt> <value1> <value2>`.
+The value is evaluated and the result is output.
+
+##### salt
+
+The field `salt` is the salt to use.
+It can be a valid hexadecimal address or a binary value.
+> Note : An address is considered valid if it **is** already in the registry.
+
+##### value1
+
+The field `value1` is the first value to use.
+It can be a valid hexadecimal address or a binary value.
+> Note : An address is considered valid if it **is** already in the registry.
+
+##### value2
+
+The field `value2` is the second value to use.
+It can be a valid hexadecimal address or a binary value.
+> Note : An address is considered valid if it **is** already in the registry.
+
+##### Example :
+
+```
+: We put the value 0 in the register 0x000010
+reg 0x000010 0
+reg 0x000011 1
+: We show the result of the MUX operation between 0x000010 and 0x000011 with salt 1
+eva mux 1 0x000010 0x000011
+: We show the result of the MUX operation between 0x000010 and 0x000011 with salt 0
+eva mux 0 0x000010 0x000011
+```
+
+Output :
+
+```
+[NewAsm:(eva):cout] >> 1
+[NewAsm:(eva):cout] >> 0
+```
+
+##### Logic Gates
+
+`MUX(S, A, B)` is the same as `NAND(NAND(S, A), NAND(NAND(S, S), B))`.
+See [NAND](####nnd) for more informations.
+
+#### dmx
+
+The `dmx` operation is used to **perform a DEMUX operation** between two values.
+
+##### Truthtable
+
+| S | O | DEMUX S O |
+|---|---|-----------|
+| 0 | 0 | 0 0       |
+| 0 | 1 | 1 0       |
+| 1 | 0 | 0 0       |
+| 1 | 1 | 0 1       |
+
+##### Syntax
+
+The syntax is `dmx <salt> <value>`.
+The value is evaluated and the result is output.
+
+##### salt
+
+The field `salt` is the salt to use.
+It can be a valid hexadecimal address or a binary value.
+> Note : An address is considered valid if it **is** already in the registry.
+
+##### value
+
+The field `value` is the value to use.
+It can be a valid hexadecimal address or a binary value.
+> Note : An address is considered valid if it **is** already in the registry.
+
+##### Example :
+
+```
+: We put the value 0 in the register 0x000010 and 0x000011
+reg 0x000010 0
+reg 0x000011 0
+: We put the result of the DEMUX operation of 0 with salt 0 in 0x000010 and 0x000011
+dmx 0 0 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 0 with salt 1 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 1 with salt 0 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 1 with salt 1 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
+```
+
+Output :
+
+```
+[NewAsm:(get):cout] >> {'0x000010': 0, '0x000011': 0}
+[NewAsm:(get):cout] >> {'0x000010': 1, '0x000011': 0}
+[NewAsm:(get):cout] >> {'0x000010': 1, '0x000011': 0}
+[NewAsm:(get):cout] >> {'0x000010': 1, '0x000011': 0}
+```
+
+##### Logic Gates
+
+`DEMUX(S, O)` is the same as `AND(O, NOT(S))` | `AND(S, 0)`.
+See [AND](####and) and [NOT](####not) for more informations.
 
 ### Special commands
 

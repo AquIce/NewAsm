@@ -13,10 +13,11 @@ class NewAsm:
         "or",
         "xor",
         "mux",
+        "dmx",
     )
     __COMMAND_CALLS = []
-    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4)
-    __EVALUABLE =  7 * (False,) + 6 * (True,)
+    __ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4)
+    __EVALUABLE =  7 * (False,) + 6 * (True,) + 1 * (False,)
     __STD_OUTS = ("cout", "rout")
     __SYS_MEM = tuple([f"0x00000{i}" for i in "0123456789abcdef"])
     __MEMORY_REGS = {
@@ -42,6 +43,7 @@ class NewAsm:
             self._or,
             self._xor,
             self._mux,
+            self._dmx,
         ]
 
     def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -246,6 +248,23 @@ class NewAsm:
         self._nnd(["nnd", a, a, "0x000002"], True)
         self._nnd(["nnd", i1, "0x000002", "0x000003"], True)
         self._nnd(["nnd", "0x000001", "0x000003", args[4]], True)
+
+    def _dmx(self, args, admin=False):
+        a = self.get_abs_arg_val(args[1], "dmx", 1)
+        m = self.get_abs_arg_val(args[2], "dmx", 2)
+        if m[0] == -1:
+            return m[1]
+        if a[0] == -1:
+            return a[1]
+        if not self.check_mem_addr(args[3], admin):
+            return self.error("dmx", "Invalid destination registry address", 3)
+        if not self.check_mem_addr(args[4], admin):
+            return self.error("dmx", "Invalid destination registry address", 4)
+        m = m[0]
+        a = a[0]
+        self._not(["not", a, "0x000001"], True)
+        self._and(["and", m, a, args[4]], True)
+        self._and(["and", m, "0x000001", args[3]], True)
 
 
     def compile(self, code: str = "") -> str:

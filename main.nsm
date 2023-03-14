@@ -1,11 +1,19 @@
-: NSM FILE
-
-eva mux 0 0 0
-eva mux 0 0 1
-eva mux 0 1 0
-eva mux 0 1 1
-
-eva mux 1 0 0
-eva mux 1 0 1
-eva mux 1 1 0
-eva mux 1 1 1
+: We put the value 0 in the register 0x000010 and 0x000011
+reg 0x000010 0
+reg 0x000011 0
+: We put the result of the DEMUX operation of 0 with salt 0 in 0x000010 and 0x000011
+dmx 0 0 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 0 with salt 1 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 1 with salt 0 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
+: We show the result of the DEMUX operation of 1 with salt 1 in 0x000010 and 0x000011
+dmx 0 1 0x000010 0x000011
+: We show the registry
+get
