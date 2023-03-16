@@ -24,11 +24,16 @@ class NewAsm:
 		'del16',
 		'eva16',
 		'nnd16',
+		'not16',
+		'and16',
+		'or16',
+		'xor16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 8 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 1 * (True,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 12 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 5 * (True,)
+	__BIT_SIZABLE =  1 * (False,) + 11 * (True,) + 2 * (False,) + 11 * (True,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -37,6 +42,10 @@ class NewAsm:
 		'SYS_MEM16': [f'0xfffff{i}' for i in '0123456789abcdef']
 	}
 	__HEX = '0123456789abcdef'
+	__DIRECTIVES = {
+		'default': lambda x : x,
+		'16bit': lambda x : ' '.join([i + '16' if i in NewAsm.__COMMANDS and NewAsm.__BIT_SIZABLE[NewAsm.__COMMANDS.index(i)] else i for i in x.split(' ')]),
+	}
 
 	def __init__(self, std_out=''):
 		self.code = ''
@@ -63,6 +72,10 @@ class NewAsm:
 			self._del16,
 			self._eva16,
 			self._nnd16,
+			self._not16,
+			self._and16,
+			self._or16,
+			self._xor16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -311,6 +324,17 @@ class NewAsm:
 			return self.error('not', 'Invalid destination registry address', 2)
 		self._nnd(['nnd', arg[0], arg[0], args[2]], admin)
 
+	def _not16(self, args, admin=False):
+		arg = self.get_abs_arg_val(args[1], 'not16', 1)
+		if arg[0] == -1:
+			return arg[1]
+		if not self.check_mem_addr16(args[2], admin):
+			return self.error('not16', 'Invalid destination registry address', 2)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('not16', 'Value does not exist in registry', 1)
+			self._not(['not', args[1][:-1] + i, args[2][:-1] + i], admin)
+
 	def _and(self, args, admin=False):
 		arg1 = self.get_abs_arg_val(args[1], 'and', 1)
 		arg2 = self.get_abs_arg_val(args[2], 'and', 2)
@@ -322,6 +346,20 @@ class NewAsm:
 			return self.error('and', 'Invalid destination registry address', 3)
 		self._nnd(['nnd', arg1[0], arg2[0], '0x000001'], True)
 		self._not(['not', '0x000001', args[3]], True)
+
+	def _and16(self, args, admin=False):
+		arg1 = self.get_abs_arg_val(args[1], 'and16', 1)
+		arg2 = self.get_abs_arg_val(args[2], 'and16', 2)
+		if arg1[0] == -1:
+			return arg1[1]
+		if arg2[0] == -1:
+			return arg2[1]
+		if not self.check_mem_addr16(args[3], admin):
+			return self.error('and16', 'Invalid destination registry address', 3)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('and16', 'Value does not exist in registry', 1)
+			self._and(['and', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	def _or(self, args, admin=False):
 		arg1 = self.get_abs_arg_val(args[1], 'or', 1)
@@ -336,6 +374,20 @@ class NewAsm:
 		self._not(['not', arg2[0], '0x000002'], True)
 		self._nnd(['nnd', '0x000001', '0x000002', args[3]], True)
 
+	def _or16(self, args, admin=False):
+		arg1 = self.get_abs_arg_val(args[1], 'or16', 1)
+		arg2 = self.get_abs_arg_val(args[2], 'or16', 2)
+		if arg1[0] == -1:
+			return arg1[1]
+		if arg2[0] == -1:
+			return arg2[1]
+		if not self.check_mem_addr16(args[3], admin):
+			return self.error('or16', 'Invalid destination registry address', 3)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('or16', 'Value does not exist in registry', 1)
+			self._or(['or', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
+
 	def _xor(self, args, admin=False):
 		arg1 = self.get_abs_arg_val(args[1], 'xor', 1)
 		arg2 = self.get_abs_arg_val(args[2], 'xor', 2)
@@ -348,6 +400,20 @@ class NewAsm:
 		self._or(['or', arg1[0], arg2[0], '0x000001'], True)
 		self._nnd(['nnd', arg1[0], arg2[0], '0x000002'], True)
 		self._and(['and', '0x000001', '0x000002', args[3]], True)
+
+	def _xor16(self, args, admin=False):
+		arg1 = self.get_abs_arg_val(args[1], 'xor16', 1)
+		arg2 = self.get_abs_arg_val(args[2], 'xor16', 2)
+		if arg1[0] == -1:
+			return arg1[1]
+		if arg2[0] == -1:
+			return arg2[1]
+		if not self.check_mem_addr16(args[3], admin):
+			return self.error('xor16', 'Invalid destination registry address', 3)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('xor16', 'Value does not exist in registry', 1)
+			self._xor(['xor', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	# ADVANCED OPERATORS
 
@@ -391,10 +457,19 @@ class NewAsm:
 
 	def compile(self, code: str = '') -> str:
 		code = self.code if code == '' else code
+		fn = self.__DIRECTIVES['default']
 		for i in self.code:
-			if i == '' or i.startswith(':'):
+			line = fn(i)
+			if line == '' or line.startswith(':'):
 				continue
-			args = i.split(' ')
+			if line.startswith('@'):
+				if line[1:] in self.__DIRECTIVES.keys():
+					fn = self.__DIRECTIVES[line[1:]]
+					continue
+				else:
+					print(self.error(line, 'Invalid directive', 0))
+					return
+			args = line.split(' ')
 			if not args[0] in self.__COMMANDS:
 				return self.error(args[0], 'Invalid command', 0)
 			out = self.__COMMAND_CALLS[self.__COMMANDS.index(args[0])](args)
