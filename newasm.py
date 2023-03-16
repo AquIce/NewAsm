@@ -29,12 +29,14 @@ class NewAsm:
 		'or16',
 		'xor16',
 		'mux16',
+		'dmx16',
+		'mux4w',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 6 * (True,)
-	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,) + 1 * (True,)
+	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,)
+	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,) + 1 * (True,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -78,6 +80,8 @@ class NewAsm:
 			self._or16,
 			self._xor16,
 			self._mux16,
+			self._dmx16,
+			self._mux4w,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -361,24 +365,59 @@ class NewAsm:
 	# ADVANCED OPERATORS
 
 	def _mux(self, args, admin=False):
-		a = self.get_abs_arg_val(args[1], 'mux', 1)
-		i1 = self.get_abs_arg_val(args[2], 'mux', 2)
-		i0 = self.get_abs_arg_val(args[3], 'mux', 3)
+		sel = self.get_abs_arg_val(args[1], 'mux', 1)
+		a = self.get_abs_arg_val(args[2], 'mux', 2)
+		b = self.get_abs_arg_val(args[3], 'mux', 3)
+		out = args[4]
+		if sel[0] == -1:
+			return sel[1]
+		if b[0] == -1:
+			return b[1]
 		if a[0] == -1:
 			return a[1]
-		if i0[0] == -1:
-			return i0[1]
-		if i1[0] == -1:
-			return i1[1]
+		sel = sel[0]
+		b = b[0]
 		a = a[0]
-		i0 = i0[0]
-		i1 = i1[0]
 		if not self.check_mem_addr(args[4], admin):
 			return self.error('mux', 'Invalid destination registry address', 4)
-		self._nnd(['nnd', i0, a, '0x000001'], True)
-		self._nnd(['nnd', a, a, '0x000002'], True)
-		self._nnd(['nnd', i1, '0x000002', '0x000003'], True)
-		self._nnd(['nnd', '0x000001', '0x000003', args[4]], True)
+		self._nnd(['nnd', b, sel, '0x000001'], True)
+		self._nnd(['nnd', sel, sel, '0x000002'], True)
+		self._nnd(['nnd', a, '0x000002', '0x000003'], True)
+		self._nnd(['nnd', '0x000001', '0x000003', out], True)
+
+	def _mux4w(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'mux4w', 1), self.get_abs_arg_val(args[2], 'mux4w', 2)]
+		a = self.get_abs_arg_val(args[3], 'mux4w', 3)
+		b = self.get_abs_arg_val(args[4], 'mux4w', 4)
+		c = self.get_abs_arg_val(args[5], 'mux4w', 5)
+		d = self.get_abs_arg_val(args[6], 'mux4w', 6)
+		out = args[7]
+		if(sel[0][0] == -1):
+			return sel[0][1]
+		if(sel[1][0] == -1): 
+			return sel[1][1]
+		if a[0] == -1:
+			return a[1]
+		if b[0] == -1:
+			return b[1]
+		if c[0] == -1:
+			return c[1]
+		if d[0] == -1:
+			return d[1]
+		if not self.check_mem_addr(args[7], admin):
+			return self.error('mux4w', 'Invalid destination registry address', 7)
+		sel = [sel[0][0], sel[1][0]]
+		a = a[0]
+		b = b[0]
+		c = c[0]
+		d = d[0]
+		print(sel, a, b, c, d)
+		print(f'0x000004: {sel[0]} {a} {b}')
+		self._mux(['mux', sel[0], a, b, '0x000004'], True)
+		print(f'0x000005: {sel[0]} {c} {d}')
+		self._mux(['mux', sel[0], c, d, '0x000005'], True)
+		print(f'{out}: {sel[1]} 0x000004 0x000005')
+		self._mux(['mux', sel[1], '0x000004', '0x000005', out], True)
 
 	def _dmx(self, args, admin=False):
 		a = self.get_abs_arg_val(args[1], 'dmx', 1)
