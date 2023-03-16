@@ -1,6 +1,7 @@
 import json
 
 class NewAsm:
+	__REG = {}
 	__COMMANDS = (
 		'get',
 		'reg',
@@ -18,20 +19,26 @@ class NewAsm:
 		'dmx',
 		'reg16',
 		'upt16',
+		'mov16',
+		'cpy16',
+		'del16',
+		'eva16',
+		'nnd16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 3 * (False,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 8 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 1 * (True,)
 	__STD_OUTS = ('cout', 'rout')
-	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'])
+	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
 		'SYS_OUT': ['0x000000'],
 		'SYS_MEM': [f'0x00000{i}' for i in '123456789abcdef'],
+		'SYS_MEM16': [f'0xfffff{i}' for i in '0123456789abcdef']
 	}
 	__HEX = '0123456789abcdef'
 
 	def __init__(self, std_out=''):
-		self.reg = {}
 		self.code = ''
 		self.out = std_out if std_out in self.__STD_OUTS else self.__STD_OUTS[0]
 		self.__COMMAND_CALLS = [
@@ -51,6 +58,11 @@ class NewAsm:
 			self._dmx,
 			self._reg16,
 			self._upt16,
+			self._mov16,
+			self._cpy16,
+			self._del16,
+			self._eva16,
+			self._nnd16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -81,7 +93,7 @@ class NewAsm:
 		tmp = self.__COMMAND_CALLS[self.__COMMANDS.index(argval[0])](argval + ['0x000000'], True), ''
 		if tmp != (None, ''):
 			return -1, tmp[0]
-		return self.reg['0x000000'], ''
+		return self.__REG['0x000000'], ''
 
 	def check_val(self, val: int) -> bool:
 		return str(val) in '01'
@@ -100,19 +112,19 @@ class NewAsm:
 		return f'[NewAsm:({command}):error] {message} (arg[{argnb}])'
 
 	def get_abs_arg_val(self, arg, command, argnb) -> tuple:
-		if not arg in self.reg.keys():
+		if not arg in self.__REG.keys():
 			if not self.check_val(arg):
 				return -1, self.error(command, 'Invalid operand value', argnb)
 			return int(arg), ''
-		return self.reg[arg], ''
+		return self.__REG[arg], ''
 
 	def _get(self, args, admin=False):
-		return json.dumps({i: self.reg[i] for i in self.reg.keys() if self.get_memory_reg(i) == 'USR_MEM'}, indent=4)
+		return json.dumps({i: self.__REG[i] for i in self.__REG.keys() if self.get_memory_reg(i) == 'USR_MEM'}, indent=4)
 
 	def _reg(self, args, admin=False):
 		if not self.check_mem_addr(args[1]):
 			return self.error('reg', 'Invalid registry address', 1)
-		if args[1] in self.reg.keys():
+		if args[1] in self.__REG.keys():
 			return self.error('reg', 'Value already in registry', 1)
 		if not self.check_val(args[2]):
 			arg2 = self.get_abs_arg_val(args[2], 'reg', 2)
@@ -128,13 +140,13 @@ class NewAsm:
 			if tmp[0] == -1:
 				return tmp[1]
 			args[2] = tmp[0]
-		self.reg[args[1]] = int(args[2])
+		self.__REG[args[1]] = int(args[2])
 
 	def _reg16(self, args, admin=False):
 		if not self.check_mem_addr16(args[1]):
 			return self.error('reg16', 'Invalid registry address', 1)
 		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
-			if i in self.reg.keys():
+			if i in self.__REG.keys():
 				return self.error('reg16', 'Value already in registry', 1)
 		if len(args) - 1 != self.__ARGS_NB[self.__COMMANDS.index('reg16')]:
 			return self.error('reg16', f'Too much arguments ({len(args) - 1} instead of {self.__ARGS_NB[self.__COMMANDS.index("reg")]})', '*')
@@ -144,13 +156,13 @@ class NewAsm:
 		for arg in args[2]:
 			if not self.check_val(arg):
 				return self.error('reg16', f'Invalid argument value at position {args[2].index(arg)} (must be a bit-value)', 2)
-			self.reg[args[1][:-1] + self.__HEX[cpt]] = int(arg)
+			self.__REG[args[1][:-1] + self.__HEX[cpt]] = int(arg)
 			cpt += 1
 
 	def _upt(self, args, admin=False):
 		if not self.check_mem_addr(args[1]):
 			return self.error('upt', 'Invalid registry address', 1)
-		if not args[1] in self.reg.keys():
+		if not args[1] in self.__REG.keys():
 			return self.error('upt', 'Value does not exist in registry', 1)
 		if not self.check_val(args[2]):
 			arg2 = self.get_abs_arg_val(args[2], 'upt', 2)
@@ -166,13 +178,13 @@ class NewAsm:
 			if tmp[0] == -1:
 				return tmp[1]
 			args[2] = tmp[0]
-		self.reg[args[1]] = int(args[2])
+		self.__REG[args[1]] = int(args[2])
 
 	def _upt16(self, args, admin=False):
 		if not self.check_mem_addr16(args[1]):
 			return self.error('upt16', 'Invalid registry address', 1)
 		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
-			if i not in self.reg.keys():
+			if i not in self.__REG.keys():
 				return self.error('upt16', 'Value does not exist in registry', 1)
 		if len(args) - 1 != self.__ARGS_NB[self.__COMMANDS.index('reg16')]:
 			return self.error('upt16', f'Too much arguments ({len(args) - 1} instead of {self.__ARGS_NB[self.__COMMANDS.index("reg")]})', '*')
@@ -182,28 +194,53 @@ class NewAsm:
 		for arg in args[2]:
 			if not self.check_val(arg):
 				return self.error('upt16', f'Invalid argument value at position {args[2].index(arg)} (must be a bit-value)', 2)
-			self.reg[args[1][:-1] + self.__HEX[cpt]] = int(arg)
+			self.__REG[args[1][:-1] + self.__HEX[cpt]] = int(arg)
 			cpt += 1
 	
 	def _mov(self, args, admin=False):
 		self._cpy(args, admin)
-		del self.reg[args[1]]
+		del self.__REG[args[1]]
+
+	def _mov16(self, args, admin=False):
+		self._cpy16(args, admin)
+		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
+			del self.__REG[i]
 
 	def _cpy(self, args, admin=False):
 		if not self.check_mem_addr(args[1]):
 			return self.error('mov', 'Invalid source registry address', 1)
 		if not self.check_mem_addr(args[2]):
 			return self.error('mov', 'Invalid destination registry address', 2)
-		if not args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
+		if not args[1] in self.__REG.keys() and args[1] not in self.__SYS_MEM:
 			return self.error('mov', 'Value does not exist in registry', 1)
-		self.reg[args[2]] = self.reg[args[1]]
+		self.__REG[args[2]] = self.__REG[args[1]]
+		
+	def _cpy16(self, args, admin=False):
+		if not self.check_mem_addr16(args[1]):
+			return self.error('mov16', 'Invalid source registry address', 1)
+		if not self.check_mem_addr16(args[2]):
+			return self.error('mov16', 'Invalid destination registry address', 2)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('mov16', 'Value does not exist in registry', 1)
+			self.__REG[args[2][:-1] + i] = self.__REG[args[1][:-1] + i]
 
 	def _del(self, args, admin=False):
 		if not self.check_mem_addr(args[1]):
 			return self.error('del', 'Invalid registry address', 1)
-		if not args[1] in self.reg.keys() and args[1] not in self.__SYS_MEM:
-			return self.error('del', 'Value does not exist in registry', 1)
-		del self.reg[args[1]]
+		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
+			print(i)
+			if i not in self.__REG.keys():
+				return self.error('del', 'Value does not exist in registry', 1)
+			del self.__REG[i]
+
+	def _del16(self, args, admin=False):
+		if not self.check_mem_addr16(args[1]):
+			return self.error('del16', 'Invalid registry address', 1)
+		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
+			if i not in self.__REG.keys():
+				return self.error('del16', 'Value does not exist in registry', 1)
+			del self.__REG[i]
 
 	def _eva(self, args, admin=False):
 		cmd = args[1]
@@ -215,8 +252,24 @@ class NewAsm:
 		if argnb != len(args) - 1:
 			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
 		self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0x000000'], True)
-		tmp = self.reg['0x000000']
-		del self.reg['0x000000']
+		tmp = self.__REG['0x000000']
+		del self.__REG['0x000000']
+		return tmp
+	
+	def _eva16(self, args, admin=False):
+		cmd = args[1]
+		cmd = args[1]
+		if not cmd in self.__COMMANDS:
+			return self.error('eva', 'Invalid command to evaluate', 1)
+		if not self.__EVALUABLE16[self.__COMMANDS.index(cmd)]:
+			return self.error('eva', 'Invalid command to evaluate', 1)
+		argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
+		if argnb != len(args) - 1:
+			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
+		self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0xfffff0'], True)
+		tmp = [self.__REG['0xfffff' + i] for i in self.__HEX]
+		for i in self.__HEX:
+			del self.__REG['0xfffff' + i]
 		return tmp
 
 	# BOOLEAN OPERATORS
@@ -232,7 +285,21 @@ class NewAsm:
 			return arg2[1]
 		if not self.check_mem_addr(args[3], admin):
 			return self.error('nnd', 'Invalid destination registry address', 3)
-		self.reg[args[3]] = 1 if arg1[0] + arg2[0] != 2 else 0
+		self.__REG[args[3]] = 1 if arg1[0] + arg2[0] != 2 else 0
+
+	def _nnd16(self, args, admin=False):
+		arg1 = self.get_abs_arg_val(args[1], 'nnd16', 1)
+		arg2 = self.get_abs_arg_val(args[2], 'nnd16', 2)
+		if arg1[0] == -1:
+			return arg1[1]
+		if arg2[0] == -1:
+			return arg2[1]
+		if not self.check_mem_addr16(args[3], admin):
+			return self.error('nnd16', 'Invalid destination registry address', 3)
+		for i in self.__HEX:
+			if args[1][:-1] + i not in self.__REG.keys():
+				return self.error('nnd16', 'Value does not exist in registry', 1)
+			self._nnd(['nnd', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	# BASE OPERATORS
 
