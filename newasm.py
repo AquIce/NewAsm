@@ -28,12 +28,13 @@ class NewAsm:
 		'and16',
 		'or16',
 		'xor16',
+		'mux16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 12 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 5 * (True,)
-	__BIT_SIZABLE =  1 * (False,) + 11 * (True,) + 2 * (False,) + 11 * (True,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 6 * (True,)
+	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -76,6 +77,7 @@ class NewAsm:
 			self._and16,
 			self._or16,
 			self._xor16,
+			self._mux16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -264,7 +266,9 @@ class NewAsm:
 		argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
 		if argnb != len(args) - 1:
 			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
-		self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0x000000'], True)
+		rt = self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0x000000'], True)
+		if rt != None:
+			return rt
 		tmp = self.__REG['0x000000']
 		del self.__REG['0x000000']
 		return tmp
@@ -279,7 +283,9 @@ class NewAsm:
 		argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
 		if argnb != len(args) - 1:
 			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
-		self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0xfffff0'], True)
+		rt = self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0xfffff0'], True)
+		if rt != None:
+			return rt
 		tmp = [self.__REG['0xfffff' + i] for i in self.__HEX]
 		for i in self.__HEX:
 			del self.__REG['0xfffff' + i]
@@ -436,6 +442,28 @@ class NewAsm:
 		self._nnd(['nnd', a, a, '0x000002'], True)
 		self._nnd(['nnd', i1, '0x000002', '0x000003'], True)
 		self._nnd(['nnd', '0x000001', '0x000003', args[4]], True)
+
+	def _mux16(self, args, admin=False):
+		a = self.get_abs_arg_val(args[1], 'mux16', 1)
+		i1 = self.get_abs_arg_val(args[2], 'mux16', 2)
+		i0 = self.get_abs_arg_val(args[3], 'mux16', 3)
+		if a[0] == -1:
+			return a[1]
+		if i0[0] == -1:
+			return i0[1]
+		if i1[0] == -1:
+			return i1[1]
+		a = a[0]
+		i0 = i0[0]
+		i1 = i1[0]
+		if not self.check_mem_addr16(args[4], admin):
+			return self.error('mux16', 'Invalid destination registry address', 4)
+		for i in self.__HEX:
+			if args[2][:-1] + i not in self.__REG.keys():
+				return self.error('mux16', 'Value does not exist in registry', 2)
+			if args[3][:-1] + i not in self.__REG.keys():
+				return self.error('mux16', 'Value does not exist in registry', 3)
+			self._mux(['mux', args[1], args[2][:-1] + i, args[3][:-1] + i, args[4][:-1] + i], admin)
 
 	def _dmx(self, args, admin=False):
 		a = self.get_abs_arg_val(args[1], 'dmx', 1)
