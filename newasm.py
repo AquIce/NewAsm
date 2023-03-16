@@ -17,10 +17,11 @@ class NewAsm:
 		'mux',
 		'dmx',
 		'reg16',
+		'upt16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 1 * (False,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 3 * (False,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -49,6 +50,7 @@ class NewAsm:
 			self._mux,
 			self._dmx,
 			self._reg16,
+			self._upt16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -132,7 +134,7 @@ class NewAsm:
 		if not self.check_mem_addr16(args[1]):
 			return self.error('reg16', 'Invalid registry address', 1)
 		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
-			if i in self.reg.keys() and i not in self.__SYS_MEM:
+			if i in self.reg.keys():
 				return self.error('reg16', 'Value already in registry', 1)
 		if len(args) - 1 != self.__ARGS_NB[self.__COMMANDS.index('reg16')]:
 			return self.error('reg16', f'Too much arguments ({len(args) - 1} instead of {self.__ARGS_NB[self.__COMMANDS.index("reg")]})', '*')
@@ -166,6 +168,23 @@ class NewAsm:
 			args[2] = tmp[0]
 		self.reg[args[1]] = int(args[2])
 
+	def _upt16(self, args, admin=False):
+		if not self.check_mem_addr16(args[1]):
+			return self.error('upt16', 'Invalid registry address', 1)
+		for i in [f'{args[1][:-1]}' + j for j in self.__HEX]:
+			if i not in self.reg.keys():
+				return self.error('upt16', 'Value does not exist in registry', 1)
+		if len(args) - 1 != self.__ARGS_NB[self.__COMMANDS.index('reg16')]:
+			return self.error('upt16', f'Too much arguments ({len(args) - 1} instead of {self.__ARGS_NB[self.__COMMANDS.index("reg")]})', '*')
+		if len(args[2]) != 16:
+			return self.error('upt16', 'Invalid argument (need a 16-bit-value)', 2)
+		cpt = 0
+		for arg in args[2]:
+			if not self.check_val(arg):
+				return self.error('upt16', f'Invalid argument value at position {args[2].index(arg)} (must be a bit-value)', 2)
+			self.reg[args[1][:-1] + self.__HEX[cpt]] = int(arg)
+			cpt += 1
+	
 	def _mov(self, args, admin=False):
 		self._cpy(args, admin)
 		del self.reg[args[1]]
