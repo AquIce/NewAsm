@@ -492,6 +492,28 @@ class NewAsm:
 				return self.error('mux16', 'Value does not exist in registry', 3)
 			self._mux(['mux', args[1], args[2][:-1] + i, args[3][:-1] + i, args[4][:-1] + i], admin)
 
+	def _dmx16(self, args, admin=False):
+		a = self.get_abs_arg_val(args[1], 'dmx16', 1)
+		i1 = self.get_abs_arg_val(args[2], 'dmx16', 2)
+		i0 = self.get_abs_arg_val(args[3], 'dmx16', 3)
+		if a[0] == -1:
+			return a[1]
+		if i0[0] == -1:
+			return i0[1]
+		if i1[0] == -1:
+			return i1[1]
+		a = a[0]
+		i0 = i0[0]
+		i1 = i1[0]
+		if not self.check_mem_addr16(args[4], admin):
+			return self.error('dmx16', 'Invalid destination registry address', 4)
+		for i in self.__HEX:
+			if args[2][:-1] + i not in self.__REG.keys():
+				return self.error('dmx16', 'Value does not exist in registry', 2)
+			if args[3][:-1] + i not in self.__REG.keys():
+				return self.error('dmx16', 'Value does not exist in registry', 3)
+			self._dmx(['dmx', args[1], args[2][:-1] + i, args[3][:-1] + i, args[4][:-1] + i], admin)
+
 	# SECTION Compilation
 
 	def compile(self, code: str = '') -> str:
