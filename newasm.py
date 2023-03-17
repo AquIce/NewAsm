@@ -35,12 +35,13 @@ class NewAsm:
 		'mux8w',
 		'mux8w16',
 		'dmx4w',
+		'dmx8w',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7, 12, 12, 7)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 14 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 2 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
-	__BIT_SIZABLE =  1 * (False,) + 13 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7, 12, 12, 7, 12)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 14 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 3 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 2 * (False,)
+	__BIT_SIZABLE =  1 * (False,) + 13 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 2 * (False,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -90,6 +91,7 @@ class NewAsm:
 			self._mux8w,
 			self._mux8w16,
 			self._dmx4w,
+			self._dmx8w,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -506,8 +508,10 @@ class NewAsm:
 		out4 = args[7]
 		if inp[0] == -1:
 			return inp[1]
-		if sel[0] == -1:
-			return sel[1]
+		if sel[0][0] == -1:
+			return sel[0][1]
+		if sel[1][0] == -1:
+			return sel[1][1]
 		if not self.check_mem_addr(out1, admin):
 			return self.error('dmx4w', 'Invalid destination registry address', 4)
 		if not self.check_mem_addr(out2, admin):
@@ -522,6 +526,45 @@ class NewAsm:
 		self._dmx(['dmx', sel[0], '0x000003', out1, out2], True)
 		self._dmx(['dmx', sel[0], '0x000004', out3, out4], True)
 		
+	def _dmx8w(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'dmx8w', 1), self.get_abs_arg_val(args[2], 'dmx8w', 2), self.get_abs_arg_val(args[3], 'dmx8w', 3)]
+		inp = self.get_abs_arg_val(args[4], 'dmx8w', 4)
+		out1 = args[5]
+		out2 = args[6]
+		out3 = args[7]
+		out4 = args[8]
+		out5 = args[9]
+		out6 = args[10]
+		out7 = args[11]
+		out8 = args[12]
+		if sel[0][0] == -1:
+			return sel[0][1]
+		if sel[1][0] == -1:
+			return sel[1][1]
+		if inp[0] == -1:
+			return inp[1]
+		if not self.check_mem_addr(out1, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 4)
+		if not self.check_mem_addr(out2, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 5)
+		if not self.check_mem_addr(out3, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 6)
+		if not self.check_mem_addr(out4, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 7)
+		if not self.check_mem_addr(out5, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 8)
+		if not self.check_mem_addr(out6, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 9)
+		if not self.check_mem_addr(out7, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 10)
+		if not self.check_mem_addr(out8, admin):
+			return self.error('dmx8w', 'Invalid destination registry address', 11)
+		sel = [sel[0][0], sel[1][0], sel[2][0]]
+		inp = inp[0]
+
+		self._dmx(['dmx', sel[2], inp, '0x000005', '0x000006'], True)
+		self._dmx4w(['dmx4w', sel[0], sel[1], '0x000005', out1, out2, out3, out4], True)
+		self._dmx4w(['dmx4w', sel[0], sel[1], '0x000006', out5, out6, out7, out8], True)
 
 	# SECTION Boolean Operators (16-bit)
 
