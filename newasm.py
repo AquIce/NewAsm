@@ -34,12 +34,13 @@ class NewAsm:
 		'mux4w16',
 		'mux8w',
 		'mux8w16',
+		'dmx4w',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7, 12, 12)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 14 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
-	__BIT_SIZABLE =  1 * (False,) + 13 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7, 12, 12, 7)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 14 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 2 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
+	__BIT_SIZABLE =  1 * (False,) + 13 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -88,6 +89,7 @@ class NewAsm:
 			self._mux4w16,
 			self._mux8w,
 			self._mux8w16,
+			self._dmx4w,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -371,9 +373,9 @@ class NewAsm:
 			return arg2[1]
 		if not self.check_mem_addr(args[3], admin):
 			return self.error('or', 'Invalid destination registry address', 3)
-		self._or(['or', arg1[0], arg2[0], '0x000001'], True)
-		self._nnd(['nnd', arg1[0], arg2[0], '0x000002'], True)
-		self._and(['and', '0x000001', '0x000002', args[3]], True)
+		self._or(['or', arg1[0], arg2[0], '0x000003'], True)
+		self._nnd(['nnd', arg1[0], arg2[0], '0x000004'], True)
+		self._and(['and', '0x000003', '0x000004', args[3]], True)
 
 	# ADVANCED OPERATORS
 
@@ -477,21 +479,49 @@ class NewAsm:
 		self._mux(['mux', sel[2], '0x000006', '0x000007', out], True)
 
 	def _dmx(self, args, admin=False):
-		a = self.get_abs_arg_val(args[1], 'dmx', 1)
-		m = self.get_abs_arg_val(args[2], 'dmx', 2)
-		if m[0] == -1:
-			return m[1]
-		if a[0] == -1:
-			return a[1]
-		if not self.check_mem_addr(args[3], admin):
+		sel = self.get_abs_arg_val(args[1], 'dmx', 1)
+		inp = self.get_abs_arg_val(args[2], 'dmx', 2)
+		out1 = args[3]
+		out2 = args[4]
+		if inp[0] == -1:
+			return inp[1]
+		if sel[0] == -1:
+			return sel[1]
+		if not self.check_mem_addr(out1, admin):
 			return self.error('dmx', 'Invalid destination registry address', 3)
-		if not self.check_mem_addr(args[4], admin):
+		if not self.check_mem_addr(out2, admin):
 			return self.error('dmx', 'Invalid destination registry address', 4)
-		m = m[0]
-		a = a[0]
-		self._not(['not', a, '0x000001'], True)
-		self._and(['and', m, a, args[4]], True)
-		self._and(['and', m, '0x000001', args[3]], True)
+		sel = sel[0]
+		inp = inp[0]
+		self._not(['not', sel, '0x000002'], True)
+		self._and(['and', inp, '0x000002', out1], True)
+		self._and(['and', inp, sel, out2], True)
+
+	def _dmx4w(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'dmx4w', 1), self.get_abs_arg_val(args[2], 'dmx4w', 2)]
+		inp = self.get_abs_arg_val(args[3], 'dmx4w', 3)
+		out1 = args[4]
+		out2 = args[5]
+		out3 = args[6]
+		out4 = args[7]
+		if inp[0] == -1:
+			return inp[1]
+		if sel[0] == -1:
+			return sel[1]
+		if not self.check_mem_addr(out1, admin):
+			return self.error('dmx4w', 'Invalid destination registry address', 4)
+		if not self.check_mem_addr(out2, admin):
+			return self.error('dmx4w', 'Invalid destination registry address', 5)
+		if not self.check_mem_addr(out3, admin):
+			return self.error('dmx4w', 'Invalid destination registry address', 6)
+		if not self.check_mem_addr(out4, admin):
+			return self.error('dmx4w', 'Invalid destination registry address', 7)
+		sel = [sel[0][0], sel[1][0]]
+		inp = inp[0]
+		self._dmx(['dmx', sel[1], inp, '0x000003', '0x000004'], True)
+		self._dmx(['dmx', sel[0], '0x000003', out1, out2], True)
+		self._dmx(['dmx', sel[0], '0x000004', out3, out4], True)
+		
 
 	# SECTION Boolean Operators (16-bit)
 
