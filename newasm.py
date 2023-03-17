@@ -31,12 +31,13 @@ class NewAsm:
 		'mux16',
 		'dmx16',
 		'mux4w',
+		'mux4w16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,) + 1 * (True,)
-	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,)
-	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,) + 1 * (True,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,)
+	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -82,6 +83,7 @@ class NewAsm:
 			self._mux16,
 			self._dmx16,
 			self._mux4w,
+			self._mux4w16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -530,6 +532,43 @@ class NewAsm:
 			if args[3][:-1] + i not in self.__REG.keys():
 				return self.error('mux16', 'Value does not exist in registry', 3)
 			self._mux(['mux', args[1], args[2][:-1] + i, args[3][:-1] + i, args[4][:-1] + i], admin)
+
+	def _mux4w16(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'mux4w16', 1), self.get_abs_arg_val(args[2], 'mux4w16', 2)]
+		a = self.get_abs_arg_val(args[3], 'mux4w16', 3)
+		b = self.get_abs_arg_val(args[4], 'mux4w16', 4)
+		c = self.get_abs_arg_val(args[5], 'mux4w16', 5)
+		d = self.get_abs_arg_val(args[6], 'mux4w16', 6)
+		out = args[7]
+		if sel[0][0] == -1:
+			return sel[0][1]
+		if sel[1][0] == -1:
+			return sel[1][1]
+		if a[0] == -1:
+			return a[1]
+		if b[0] == -1:
+			return b[1]
+		if c[0] == -1:
+			return c[1]
+		if d[0] == -1:
+			return d[1]
+		sel = [sel[0][0], sel[1][0]]
+		a = a[0]
+		b = b[0]
+		c = c[0]
+		d = d[0]
+		if not self.check_mem_addr16(out, admin):
+			return self.error('mux4w16', 'Invalid destination registry address', 7)
+		for i in self.__HEX:
+			if args[3][:-1] + i not in self.__REG.keys():
+				return self.error('mux4w16', 'Value does not exist in registry', 3)
+			if args[4][:-1] + i not in self.__REG.keys():
+				return self.error('mux4w16', 'Value does not exist in registry', 4)
+			if args[5][:-1] + i not in self.__REG.keys():
+				return self.error('mux4w16', 'Value does not exist in registry', 5)
+			if args[6][:-1] + i not in self.__REG.keys():
+				return self.error('mux4w16', 'Value does not exist in registry', 6)
+			self._mux4w(['mux4w', args[1], args[2], args[3][:-1] + i, args[4][:-1] + i, args[5][:-1] + i, args[6][:-1] + i, args[7][:-1] + i], admin)
 
 	def _dmx16(self, args, admin=False):
 		a = self.get_abs_arg_val(args[1], 'dmx16', 1)
