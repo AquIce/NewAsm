@@ -32,12 +32,14 @@ class NewAsm:
 		'dmx16',
 		'mux4w',
 		'mux4w16',
+		'mux8w',
+		'mux8w16',
 	)
 	__COMMAND_CALLS = []
-	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7)
-	__EVALUABLE =  7 * (False,) + 6 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,)
-	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,)
-	__BIT_SIZABLE =  1 * (False,) + 12 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
+	__ARGS_NB = (0, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 2, 2, 2, 2, 1, -1, 3, 2, 3, 3, 3, 4, 4, 7, 7, 12, 12)
+	__EVALUABLE =  7 * (False,) + 6 * (True,) + 14 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
+	__EVALUABLE16 = 20 * (False,) + 7 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,)
+	__BIT_SIZABLE =  1 * (False,) + 13 * (True,) + 13 * (False,) + 1 * (True,) + 1 * (False,) + 1 * (True,) + 1 * (False,)
 	__STD_OUTS = ('cout', 'rout')
 	__SYS_MEM = tuple([f'0x00000{i}' for i in '0123456789abcdef'] + [f'0xfffff{i}' for i in '0123456789abcdef'])
 	__MEMORY_REGS = {
@@ -84,6 +86,8 @@ class NewAsm:
 			self._dmx16,
 			self._mux4w,
 			self._mux4w16,
+			self._mux8w,
+			self._mux8w16,
 		]
 
 	def check_mem_addr(self, mem_addr: str, admin=False) -> bool:
@@ -277,7 +281,7 @@ class NewAsm:
 			return self.error('eva', 'Invalid command to evaluate', 1)
 		argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
 		if argnb != len(args) - 1:
-			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
+			return self.error('eva', f'Invalid number of args for command {cmd}', 2)
 		rt = self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0x000000'], True)
 		if rt != None:
 			return rt
@@ -294,7 +298,7 @@ class NewAsm:
 			return self.error('eva', 'Invalid command to evaluate', 1)
 		argnb = self.__ARGS_NB[self.__COMMANDS.index(cmd)]
 		if argnb != len(args) - 1:
-			return self.error('eva', f'Invalid number of args for command \`{cmd}\`', 2)
+			return self.error('eva', f'Invalid number of args for command {cmd}', 2)
 		rt = self.__COMMAND_CALLS[self.__COMMANDS.index(cmd)](args[1:] + ['0xfffff0'], True)
 		if rt != None:
 			return rt
@@ -413,13 +417,57 @@ class NewAsm:
 		b = b[0]
 		c = c[0]
 		d = d[0]
-		print(sel, a, b, c, d)
-		print(f'0x000004: {sel[0]} {a} {b}')
 		self._mux(['mux', sel[0], a, b, '0x000004'], True)
-		print(f'0x000005: {sel[0]} {c} {d}')
 		self._mux(['mux', sel[0], c, d, '0x000005'], True)
-		print(f'{out}: {sel[1]} 0x000004 0x000005')
 		self._mux(['mux', sel[1], '0x000004', '0x000005', out], True)
+
+	def _mux8w(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'mux8w', 1), self.get_abs_arg_val(args[2], 'mux8w', 2), self.get_abs_arg_val(args[3], 'mux8w', 3)]
+		a = self.get_abs_arg_val(args[4], 'mux8w', 4)
+		b = self.get_abs_arg_val(args[5], 'mux8w', 5)
+		c = self.get_abs_arg_val(args[6], 'mux8w', 6)
+		d = self.get_abs_arg_val(args[7], 'mux8w', 7)
+		e = self.get_abs_arg_val(args[8], 'mux8w', 8)
+		f = self.get_abs_arg_val(args[9], 'mux8w', 9)
+		g = self.get_abs_arg_val(args[10], 'mux8w', 10)
+		h = self.get_abs_arg_val(args[11], 'mux8w', 11)
+		out = args[12]
+		if(sel[0][0] == -1):
+			return sel[0][1]
+		if(sel[1][0] == -1): 
+			return sel[1][1]
+		if(sel[2][0] == -1): 
+			return sel[2][1]
+		if a[0] == -1:
+			return a[1]
+		if b[0] == -1:
+			return b[1]
+		if c[0] == -1:
+			return c[1]
+		if d[0] == -1:
+			return d[1]
+		if e[0] == -1:
+			return e[1]
+		if f[0] == -1:
+			return f[1]
+		if g[0] == -1:
+			return g[1]
+		if h[0] == -1:
+			return h[1]
+		if not self.check_mem_addr(args[12], admin):
+			return self.error('mux8w', 'Invalid destination registry address', 12)
+		sel = [sel[0][0], sel[1][0], sel[2][0]]
+		a = a[0]
+		b = b[0]
+		c = c[0]
+		d = d[0]
+		e = e[0]
+		f = f[0]
+		g = g[0]
+		h = h[0]
+		self._mux4w(['mux4w', sel[0], sel[1], a, b, c, d, '0x000006'], True)
+		self._mux4w(['mux4w', sel[0], sel[1], e, f, g, h, '0x000007'], True)
+		self._mux(['mux', sel[2], '0x000006', '0x000007', out], True)
 
 	def _dmx(self, args, admin=False):
 		a = self.get_abs_arg_val(args[1], 'dmx', 1)
@@ -569,6 +617,69 @@ class NewAsm:
 			if args[6][:-1] + i not in self.__REG.keys():
 				return self.error('mux4w16', 'Value does not exist in registry', 6)
 			self._mux4w(['mux4w', args[1], args[2], args[3][:-1] + i, args[4][:-1] + i, args[5][:-1] + i, args[6][:-1] + i, args[7][:-1] + i], admin)
+
+	def _mux8w16(self, args, admin=False):
+		sel = [self.get_abs_arg_val(args[1], 'mux8w16', 1), self.get_abs_arg_val(args[2], 'mux8w16', 2), self.get_abs_arg_val(args[3], 'mux8w16', 3)]
+		a = self.get_abs_arg_val(args[4], 'mux8w16', 4)
+		b = self.get_abs_arg_val(args[5], 'mux8w16', 5)
+		c = self.get_abs_arg_val(args[6], 'mux8w16', 6)
+		d = self.get_abs_arg_val(args[7], 'mux8w16', 7)
+		e = self.get_abs_arg_val(args[8], 'mux8w16', 8)
+		f = self.get_abs_arg_val(args[9], 'mux8w16', 9)
+		g = self.get_abs_arg_val(args[10], 'mux8w16', 10)
+		h = self.get_abs_arg_val(args[11], 'mux8w16', 11)
+		out = args[12]
+		if sel[0][0] == -1:
+			return sel[0][1]
+		if sel[1][0] == -1:
+			return sel[1][1]
+		if sel[2][0] == -1:
+			return sel[2][1]
+		if a[0] == -1:
+			return a[1]
+		if b[0] == -1:
+			return b[1]
+		if c[0] == -1:
+			return c[1]
+		if d[0] == -1:
+			return d[1]
+		if e[0] == -1:
+			return e[1]
+		if f[0] == -1:
+			return f[1]
+		if g[0] == -1:
+			return g[1]
+		if h[0] == -1:
+			return h[1]
+		sel = [sel[0][0], sel[1][0], sel[2][0]]
+		a = a[0]
+		b = b[0]
+		c = c[0]
+		d = d[0]
+		e = e[0]
+		f = f[0]
+		g = g[0]
+		h = h[0]
+		if not self.check_mem_addr16(out, admin):
+			return self.error('mux8w16', 'Invalid destination registry address', 12)
+		for i in self.__HEX:
+			if args[4][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 4)
+			if args[5][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 5)
+			if args[6][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 6)
+			if args[7][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 7)
+			if args[8][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 8)
+			if args[9][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 9)
+			if args[10][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 10)
+			if args[11][:-1] + i not in self.__REG.keys():
+				return self.error('mux8w16', 'Value does not exist in registry', 11)
+			self._mux8w(['mux8w', args[1], args[2], args[3], args[4][:-1] + i, args[5][:-1] + i, args[6][:-1] + i, args[7][:-1] + i, args[8][:-1] + i, args[9][:-1] + i, args[10][:-1] + i, args[11][:-1] + i, args[12][:-1] + i], admin)
 
 	def _dmx16(self, args, admin=False):
 		a = self.get_abs_arg_val(args[1], 'dmx16', 1)
