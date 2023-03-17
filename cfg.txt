@@ -1,0 +1,5 @@
+git add .gitignore
+git add LICENSE
+git add main.nsm
+git add newasm.py
+git add README.md

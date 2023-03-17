@@ -143,6 +143,13 @@ class NewAsm:
 			return int(arg), ''
 		return self.__REG[arg], ''
 
+	def get_abs_arg_val16(self, arg, command, argnb) -> tuple:
+		if not arg in self.__REG.keys():
+			if not self.check_val(arg):
+				return -1, self.error(command, 'Invalid operand value', argnb)
+			return arg, ''
+		return ''.join([str(self.__REG[arg[:-1] + i]) for i in self.__HEX])
+
 	# SECTION Memory Management (single bit)
 
 	def _get(self, args, admin=False):
@@ -491,8 +498,8 @@ class NewAsm:
 	# BASIC OPERATORS
 
 	def _nnd16(self, args, admin=False):
-		arg1 = self.get_abs_arg_val(args[1], 'nnd16', 1)
-		arg2 = self.get_abs_arg_val(args[2], 'nnd16', 2)
+		arg1 = self.get_abs_arg_val16(args[1], 'nnd16', 1)
+		arg2 = self.get_abs_arg_val16(args[2], 'nnd16', 2)
 		if arg1[0] == -1:
 			return arg1[1]
 		if arg2[0] == -1:
@@ -505,7 +512,7 @@ class NewAsm:
 			self._nnd(['nnd', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	def _not16(self, args, admin=False):
-		arg = self.get_abs_arg_val(args[1], 'not16', 1)
+		arg = self.get_abs_arg_val16(args[1], 'not16', 1)
 		if arg[0] == -1:
 			return arg[1]
 		if not self.check_mem_addr16(args[2], admin):
@@ -516,8 +523,8 @@ class NewAsm:
 			self._not(['not', args[1][:-1] + i, args[2][:-1] + i], admin)
 
 	def _and16(self, args, admin=False):
-		arg1 = self.get_abs_arg_val(args[1], 'and16', 1)
-		arg2 = self.get_abs_arg_val(args[2], 'and16', 2)
+		arg1 = self.get_abs_arg_val16(args[1], 'and16', 1)
+		arg2 = self.get_abs_arg_val16(args[2], 'and16', 2)
 		if arg1[0] == -1:
 			return arg1[1]
 		if arg2[0] == -1:
@@ -530,8 +537,8 @@ class NewAsm:
 			self._and(['and', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	def _or16(self, args, admin=False):
-		arg1 = self.get_abs_arg_val(args[1], 'or16', 1)
-		arg2 = self.get_abs_arg_val(args[2], 'or16', 2)
+		arg1 = self.get_abs_arg_val16(args[1], 'or16', 1)
+		arg2 = self.get_abs_arg_val16(args[2], 'or16', 2)
 		if arg1[0] == -1:
 			return arg1[1]
 		if arg2[0] == -1:
@@ -544,8 +551,8 @@ class NewAsm:
 			self._or(['or', args[1][:-1] + i, args[2][:-1] + i, args[3][:-1] + i], admin)
 
 	def _xor16(self, args, admin=False):
-		arg1 = self.get_abs_arg_val(args[1], 'xor16', 1)
-		arg2 = self.get_abs_arg_val(args[2], 'xor16', 2)
+		arg1 = self.get_abs_arg_val16(args[1], 'xor16', 1)
+		arg2 = self.get_abs_arg_val16(args[2], 'xor16', 2)
 		if arg1[0] == -1:
 			return arg1[1]
 		if arg2[0] == -1:
@@ -560,9 +567,9 @@ class NewAsm:
 	# ADVANCED OPERATORS
 
 	def _mux16(self, args, admin=False):
-		a = self.get_abs_arg_val(args[1], 'mux16', 1)
-		i1 = self.get_abs_arg_val(args[2], 'mux16', 2)
-		i0 = self.get_abs_arg_val(args[3], 'mux16', 3)
+		a = self.get_abs_arg_val16(args[1], 'mux16', 1)
+		i1 = self.get_abs_arg_val16(args[2], 'mux16', 2)
+		i0 = self.get_abs_arg_val16(args[3], 'mux16', 3)
 		if a[0] == -1:
 			return a[1]
 		if i0[0] == -1:
@@ -582,11 +589,11 @@ class NewAsm:
 			self._mux(['mux', args[1], args[2][:-1] + i, args[3][:-1] + i, args[4][:-1] + i], admin)
 
 	def _mux4w16(self, args, admin=False):
-		sel = [self.get_abs_arg_val(args[1], 'mux4w16', 1), self.get_abs_arg_val(args[2], 'mux4w16', 2)]
-		a = self.get_abs_arg_val(args[3], 'mux4w16', 3)
-		b = self.get_abs_arg_val(args[4], 'mux4w16', 4)
-		c = self.get_abs_arg_val(args[5], 'mux4w16', 5)
-		d = self.get_abs_arg_val(args[6], 'mux4w16', 6)
+		sel = [self.get_abs_arg_val16(args[1], 'mux4w16', 1), self.get_abs_arg_val16(args[2], 'mux4w16', 2)]
+		a = self.get_abs_arg_val16(args[3], 'mux4w16', 3)
+		b = self.get_abs_arg_val16(args[4], 'mux4w16', 4)
+		c = self.get_abs_arg_val16(args[5], 'mux4w16', 5)
+		d = self.get_abs_arg_val16(args[6], 'mux4w16', 6)
 		out = args[7]
 		if sel[0][0] == -1:
 			return sel[0][1]
@@ -619,15 +626,15 @@ class NewAsm:
 			self._mux4w(['mux4w', args[1], args[2], args[3][:-1] + i, args[4][:-1] + i, args[5][:-1] + i, args[6][:-1] + i, args[7][:-1] + i], admin)
 
 	def _mux8w16(self, args, admin=False):
-		sel = [self.get_abs_arg_val(args[1], 'mux8w16', 1), self.get_abs_arg_val(args[2], 'mux8w16', 2), self.get_abs_arg_val(args[3], 'mux8w16', 3)]
-		a = self.get_abs_arg_val(args[4], 'mux8w16', 4)
-		b = self.get_abs_arg_val(args[5], 'mux8w16', 5)
-		c = self.get_abs_arg_val(args[6], 'mux8w16', 6)
-		d = self.get_abs_arg_val(args[7], 'mux8w16', 7)
-		e = self.get_abs_arg_val(args[8], 'mux8w16', 8)
-		f = self.get_abs_arg_val(args[9], 'mux8w16', 9)
-		g = self.get_abs_arg_val(args[10], 'mux8w16', 10)
-		h = self.get_abs_arg_val(args[11], 'mux8w16', 11)
+		sel = [self.get_abs_arg_val16(args[1], 'mux8w16', 1), self.get_abs_arg_val16(args[2], 'mux8w16', 2), self.get_abs_arg_val16(args[3], 'mux8w16', 3)]
+		a = self.get_abs_arg_val16(args[4], 'mux8w16', 4)
+		b = self.get_abs_arg_val16(args[5], 'mux8w16', 5)
+		c = self.get_abs_arg_val16(args[6], 'mux8w16', 6)
+		d = self.get_abs_arg_val16(args[7], 'mux8w16', 7)
+		e = self.get_abs_arg_val16(args[8], 'mux8w16', 8)
+		f = self.get_abs_arg_val16(args[9], 'mux8w16', 9)
+		g = self.get_abs_arg_val16(args[10], 'mux8w16', 10)
+		h = self.get_abs_arg_val16(args[11], 'mux8w16', 11)
 		out = args[12]
 		if sel[0][0] == -1:
 			return sel[0][1]
@@ -682,9 +689,9 @@ class NewAsm:
 			self._mux8w(['mux8w', args[1], args[2], args[3], args[4][:-1] + i, args[5][:-1] + i, args[6][:-1] + i, args[7][:-1] + i, args[8][:-1] + i, args[9][:-1] + i, args[10][:-1] + i, args[11][:-1] + i, args[12][:-1] + i], admin)
 
 	def _dmx16(self, args, admin=False):
-		a = self.get_abs_arg_val(args[1], 'dmx16', 1)
-		i1 = self.get_abs_arg_val(args[2], 'dmx16', 2)
-		i0 = self.get_abs_arg_val(args[3], 'dmx16', 3)
+		a = self.get_abs_arg_val16(args[1], 'dmx16', 1)
+		i1 = self.get_abs_arg_val16(args[2], 'dmx16', 2)
+		i0 = self.get_abs_arg_val16(args[3], 'dmx16', 3)
 		if a[0] == -1:
 			return a[1]
 		if i0[0] == -1:
